@@ -185,30 +185,25 @@ class Terminal:
     def initialize_styles(self, styles: dict):  # no cov
         # Lazily display errors so that they use the correct style
         errors = []
+        # Specially set the 'spinner' option as we use it a few times below.
+        spinopt = 'spinner'
 
         for option, style in styles.items():
-            attribute = f'_style_level_{option}'
+            attribute = f'_style_{'' if option == spinopt else 'level_'}{option}'
+            parser = lambda s: parse_spin(s) if option == spinopt else Style.parse(s)
+            parse_spin = lambda s: s if Spinner(s) else ''
 
             default_level = getattr(self, attribute, None)
             if default_level:
                 try:
-                    parsed_style = Style.parse(style)
-                except StyleSyntaxError as e:  # no cov
-                    errors.append(f'Invalid style definition for `{option}`, defaulting to `{default_level}`: {e}')
-                    parsed_style = Style.parse(default_level)
+                    parsed_style = parser(style)
+                except (StyleSyntaxError, KeyError) as e:  # no cov
+                    errors.append(f'Invalid `{option}` style definition, defaulting to `{default_level}`: {e}')
+                    parsed_style = parser(style)
 
                 setattr(self, attribute, parsed_style)
-            elif option == 'spinner':
-                try:
-                    Spinner(style)
-                except KeyError as e:
-                    errors.append(
-                        f'Invalid style definition for `{option}`, defaulting to `{self._style_spinner}`: {e.args[0]}'
-                    )
-                else:
-                    self._style_spinner = style
             else:
-                setattr(self, f'_style_{option}', style)
+                setattr(self, attribute, style)
 
         return errors
 
